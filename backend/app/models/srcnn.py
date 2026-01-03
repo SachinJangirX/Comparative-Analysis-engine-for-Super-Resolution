@@ -25,6 +25,10 @@ class SRCNNNet(nn.Module):
     def forward(self, x):
         return self.net(x)
     
+    def sharpen(img, strength=1.2):
+        blur = cv2.GaussianBlur(img, (0,0), sigmaX=1.0)
+        return cv2.addWeighted(img, strength, blur, -(strength-1), 0)
+    
 class SRCNN(SuperResolutionModel):
     def __init__(self, scale: int = 4):
         self.scale = scale
@@ -34,18 +38,32 @@ class SRCNN(SuperResolutionModel):
 
 
     def run(self, image):
-        h, w = image.shape[:2]
+        ycrcb = cv2.cvtColor(image, cv2.COLOR_RGB2YCrCb)
+        y, cr, cb = cv2.split(ycrcb)
 
-        upscaled = cv2.resize(
-            image,
+        h, w = y.shape
+        y_up = cv2.resize(
+            y,
             (w*self.scale, h*self.scale),
             interpolation=cv2.INTER_CUBIC,
         )
 
-        tensor = preprocess(upscaled).to(self.device)
+        y_tensor = torch.from_numpy(y_up/255.0).float().unsqueeze(0).unsqueeze(0)
+        y_tensor = y_tensor.to(self.device)
+
         with torch.no_grad():
-            refined = self.model(tensor)
+            y_sr = self.model(y_tensor)
 
-        out = tensor + 0.1*refined
+        y_sr = y_sr.mean(dim=1, keepdim=False)
+        y_sr = y_sr.squeeze(0).cpu().numpy()
+        y_sr = np.clip(y_sr*255.0, 0, 255).astype(np.uint8)
 
-        return postprocess(out)
+        cr_up = cv2.resize(cr, (y_sr.shape[1], y_sr.shape[0]), interpolation=cv2.INTER_CUBIC)
+        cb_up = cv2.resize(cb, (y_sr.shape[1], y_sr.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        out = cv2.merge([y_sr, cr_up, cb_up])
+        return cv2.cvtColor(out, cv2.COLOR_YCrCb2RGB)
+    
+        out = sharpen(out, strength=1.2)
+
+        return out
