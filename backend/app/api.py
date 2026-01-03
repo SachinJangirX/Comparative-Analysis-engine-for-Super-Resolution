@@ -1,13 +1,23 @@
 from fastapi import FastAPI, UploadFile, File
 import numpy as np
 import cv2
-
+from fastapi.staticfiles import StaticFiles
 from app.models.srcnn import SRCNN
 from app.models.bicubic import Bicubic
 from app.engine.comparator import ComparatorEngine
-
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Super Resolution Comparison API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
 
 models = {
     "bicubic": Bicubic(),
