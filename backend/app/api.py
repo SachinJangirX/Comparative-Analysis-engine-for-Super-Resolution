@@ -7,7 +7,7 @@ from app.models.srcnn import SRCNN
 from app.models.bicubic import Bicubic
 from app.engine.comparator import ComparatorEngine
 from fastapi.middleware.cors import CORSMiddleware
-from app.models.esrgan import ESRGAN
+# from app.models.esrgan import ESRGAN
 
 
 app = FastAPI(title="Super Resolution Comparison API")
@@ -25,7 +25,7 @@ app.mount("/static", StaticFiles(directory=".", html=True), name="static")
 models = {
     "bicubic": Bicubic(),
     "srcnn": SRCNN(),
-    "esrgan": ESRGAN()
+    # "esrgan": ESRGAN()
 }
 
 engine = ComparatorEngine(models)
